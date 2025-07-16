@@ -221,21 +221,37 @@ private:
 
 class VerticalMapper : public PixelMapper {
 public:
-  VerticalMapper() {}
+  VerticalMapper() : z_(false), flip_left_(false) {}
 
   virtual const char *GetName() const { return "V-mapper"; }
 
   virtual bool SetParameters(int chain, int parallel, const char *param) {
     chain_ = chain;
     parallel_ = parallel;
-    // optional argument :Z allow for every other panel to be flipped
-    // upside down so that cabling can be shorter:
-    // [ O < I ]   without Z       [ O < I  ]
-    //   ,---^      <----                ^
-    // [ O < I ]                   [ I > O  ]
-    //   ,---^            with Z     ^
-    // [ O < I ]            --->   [ O < I  ]
-    z_ = (param && strcasecmp(param, "Z") == 0);
+    z_ = false;
+    flip_left_ = false;
+    
+    if (param) {
+      // Parse multiple parameters separated by commas
+      std::string params(param);
+      size_t pos = 0;
+      std::string token;
+      while ((pos = params.find(',')) != std::string::npos) {
+        token = params.substr(0, pos);
+        if (strcasecmp(token.c_str(), "Z") == 0) {
+          z_ = true;
+        } else if (strcasecmp(token.c_str(), "L") == 0) {
+          flip_left_ = true;
+        }
+        params.erase(0, pos + 1);
+      }
+      // Handle last parameter (or only parameter if no comma)
+      if (strcasecmp(params.c_str(), "Z") == 0) {
+        z_ = true;
+      } else if (strcasecmp(params.c_str(), "L") == 0) {
+        flip_left_ = true;
+      }
+    }
     return true;
   }
 
@@ -269,16 +285,22 @@ public:
     const int x_within_panel = x % panel_width;
     const int y_within_panel = y % panel_height;
     const bool needs_flipping = z_ && (is_height_even_panels - ((y / panel_height) % 2)) == 0;
-    *matrix_x = x_panel_start + (needs_flipping
+    
+    // Handle left panel flipping for side-by-side arrangement
+    const bool is_left_panel = (x / panel_width) % 2 == 0;  // Even panel index = left panel
+    const bool flip_this_panel = needs_flipping || (flip_left_ && is_left_panel);
+    
+    *matrix_x = x_panel_start + (flip_this_panel
                                  ? panel_width - 1 - x_within_panel
                                  : x_within_panel);
-    *matrix_y = y_panel_start + (needs_flipping
+    *matrix_y = y_panel_start + (flip_this_panel
                                  ? panel_height - 1 - y_within_panel
                                  : y_within_panel);
   }
 
 private:
   bool z_;
+  bool flip_left_;
   int chain_;
   int parallel_;
 };
