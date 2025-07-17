@@ -221,7 +221,7 @@ private:
 
 class VerticalMapper : public PixelMapper {
 public:
-  VerticalMapper() : z_(false), flip_left_(false) {}
+  VerticalMapper() : z_(false), flip_right_(false) {}
 
   virtual const char *GetName() const { return "V-mapper"; }
 
@@ -229,8 +229,8 @@ public:
     chain_ = chain;
     parallel_ = parallel;
     z_ = false;
-    flip_left_ = false;
-    
+    flip_right_ = false;
+
     if (param) {
       // Parse multiple parameters separated by commas
       std::string params(param);
@@ -240,16 +240,16 @@ public:
         token = params.substr(0, pos);
         if (strcasecmp(token.c_str(), "Z") == 0) {
           z_ = true;
-        } else if (strcasecmp(token.c_str(), "L") == 0) {
-          flip_left_ = true;
+        } else if (strcasecmp(token.c_str(), "R") == 0) {
+          flip_right_ = true;
         }
         params.erase(0, pos + 1);
       }
       // Handle last parameter (or only parameter if no comma)
       if (strcasecmp(params.c_str(), "Z") == 0) {
         z_ = true;
-      } else if (strcasecmp(params.c_str(), "L") == 0) {
-        flip_left_ = true;
+      } else if (strcasecmp(params.c_str(), "R") == 0) {
+        flip_right_ = true;
       }
     }
     return true;
@@ -286,9 +286,9 @@ public:
     const int y_within_panel = y % panel_height;
     const bool needs_flipping = z_ && (is_height_even_panels - ((y / panel_height) % 2)) == 0;
     
-    // Handle left panel flipping for side-by-side arrangement
-    const bool is_left_panel = (x / panel_width) % 2 == 0;  // Even panel index = left panel
-    const bool flip_this_panel = needs_flipping || (flip_left_ && is_left_panel);
+    // Handle right panel flipping for side-by-side arrangement
+    const bool is_right_panel = (x / panel_width) % 2 == 1;  // Odd panel index = right panel
+    const bool flip_this_panel = needs_flipping || (flip_right_ && is_right_panel);
     
     *matrix_x = x_panel_start + (flip_this_panel
                                  ? panel_width - 1 - x_within_panel
@@ -300,7 +300,7 @@ public:
 
 private:
   bool z_;
-  bool flip_left_;
+  bool flip_right_;
   int chain_;
   int parallel_;
 };
