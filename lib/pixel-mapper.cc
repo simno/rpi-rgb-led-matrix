@@ -242,6 +242,9 @@ public:
           z_ = true;
         } else if (strcasecmp(token.c_str(), "R") == 0) {
           flip_right_ = true;
+        } else {
+          fprintf(stderr, "Invalid parameter '%s'. Valid parameters are Z,R\n", token.c_str());
+          return false;
         }
         params.erase(0, pos + 1);
       }
@@ -250,6 +253,9 @@ public:
         z_ = true;
       } else if (strcasecmp(params.c_str(), "R") == 0) {
         flip_right_ = true;
+      } else if (!params.empty()) {
+        fprintf(stderr, "Invalid parameter '%s'. Valid parameters are Z,R\n", params.c_str());
+        return false;
       }
     }
     return true;
@@ -268,7 +274,6 @@ public:
 #endif
     return true;
   }
-
   virtual void MapVisibleToMatrix(int matrix_width, int matrix_height,
                                   int x, int y,
                                   int *matrix_x, int *matrix_y) const {
@@ -284,20 +289,33 @@ public:
     const int y_panel_start = x / panel_width * panel_height;
     const int x_within_panel = x % panel_width;
     const int y_within_panel = y % panel_height;
+    // For Z-shaped wiring, flip alternate rows based on panel count
     const bool needs_flipping = z_ && (is_height_even_panels - ((y / panel_height) % 2)) == 0;
-    
+
+    fprintf(stderr, "Panel dimensions: width=%d height=%d\n", panel_width, panel_height);
+    fprintf(stderr, "Input coordinates: x=%d y=%d\n", x, y);
+    fprintf(stderr, "Panel start: x=%d y=%d\n", x_panel_start, y_panel_start);
+    fprintf(stderr, "Within panel: x=%d y=%d\n", x_within_panel, y_within_panel);
+    fprintf(stderr, "Needs flipping: %s\n", needs_flipping ? "true" : "false");
+
     // Handle right panel flipping for side-by-side arrangement
-    const bool is_right_panel = (x / panel_width) % 2 == 1;  // Odd panel index = right panel
+    // Each panel pair consists of a left and right panel. Right panels are at odd indices.
+    const int panel_pair_index = x / panel_width;
+    const bool is_right_panel = panel_pair_index % 2 == 1;
     const bool flip_this_panel = needs_flipping || (flip_right_ && is_right_panel);
     
+    fprintf(stderr, "Panel pair index: %d, Is right panel: %s, Flip this panel: %s\n",
+            panel_pair_index, is_right_panel ? "true" : "false", flip_this_panel ? "true" : "false");
+
     *matrix_x = x_panel_start + (flip_this_panel
                                  ? panel_width - 1 - x_within_panel
                                  : x_within_panel);
     *matrix_y = y_panel_start + (flip_this_panel
                                  ? panel_height - 1 - y_within_panel
                                  : y_within_panel);
-  }
 
+    fprintf(stderr, "Output coordinates: x=%d y=%d\n", *matrix_x, *matrix_y);
+  }
 private:
   bool z_;
   bool flip_right_;
